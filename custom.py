@@ -137,7 +137,6 @@ def main(unused_argv):
       feed_dict[flow_input] = flow_sample
 
     output = sess.run(model_output, feed_dict=feed_dict)
-    print(output.shape)
     np.save(_SAVE_PATH, output)
 
 
