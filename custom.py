@@ -6,16 +6,11 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import os
 
 import i3d
 
 _IMAGE_SIZE = 224
-
-_SAMPLE_VIDEO_FRAMES = 79
-_SAMPLE_PATHS = {
-    'rgb': 'data/v_CricketShot_g04_c01_rgb.npy',
-    'flow': 'data/v_CricketShot_g04_c01_flow.npy',
-}
 
 _CHECKPOINT_PATHS = {
     'rgb': 'data/checkpoints/rgb_scratch/model.ckpt',
@@ -33,7 +28,19 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('eval_type', 'joint', 'rgb, rgb600, flow, or joint')
 tf.flags.DEFINE_boolean('imagenet_pretrained', True, '')
 tf.flags.DEFINE_string('final_endpoint', 'Logits', 'Mixed_4f, Logits, Predictions, etc.')
+tf.flags.DEFINE_string('path', 'temp', '')
+tf.flags.DEFINE_string('flow_path', 'temp', '')
+tf.flags.DEFINE_string('save_path', 'temp', '')
+tf.flags.DEFINE_integer('frames', 0, '')
 
+_PATHS = {
+    'rgb': FLAGS.path,
+    'flow': FLAGS.flow_path,
+}
+
+_SAVE_PATH = FLAGS.save_path
+
+_SAMPLE_VIDEO_FRAMES = FLAGS.frames
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
@@ -113,7 +120,8 @@ def main(unused_argv):
       else:
         rgb_saver.restore(sess, _CHECKPOINT_PATHS[eval_type])
       tf.logging.info('RGB checkpoint restored')
-      rgb_sample = np.load(_SAMPLE_PATHS['rgb'])
+      rgb_sample = np.load(_PATHS['rgb'])
+      rgb_sample = rgb_sample[np.newaxis, ...]
       tf.logging.info('RGB data loaded, shape=%s', str(rgb_sample.shape))
       feed_dict[rgb_input] = rgb_sample
 
@@ -123,15 +131,14 @@ def main(unused_argv):
       else:
         flow_saver.restore(sess, _CHECKPOINT_PATHS['flow'])
       tf.logging.info('Flow checkpoint restored')
-      flow_sample = np.load(_SAMPLE_PATHS['flow'])
+      flow_sample = np.load(_PATHS['flow'])
+      flow_sample = flow_sample[np.newaxis, ...]
       tf.logging.info('Flow data loaded, shape=%s', str(flow_sample.shape))
       feed_dict[flow_input] = flow_sample
 
     output = sess.run(model_output, feed_dict=feed_dict)
-
-    print(output)
     print(output.shape)
-
+    np.save(_SAVE_PATH, output)
 
 
 if __name__ == '__main__':
