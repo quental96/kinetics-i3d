@@ -49,7 +49,7 @@ tf.flags.DEFINE_boolean('imagenet_pretrained', True, '')
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   eval_type = FLAGS.eval_type
 
   imagenet_pretrained = FLAGS.imagenet_pretrained
@@ -68,12 +68,12 @@ def main(unused_argv):
 
   if eval_type in ['rgb', 'rgb600', 'joint']:
     # RGB input has 3 channels.
-    rgb_input = tf.placeholder(
+    rgb_input = tf.compat.v1.placeholder(
         tf.float32,
         shape=(1, _SAMPLE_VIDEO_FRAMES, _IMAGE_SIZE, _IMAGE_SIZE, 3))
 
 
-    with tf.variable_scope('RGB'):
+    with tf.compat.v1.variable_scope('RGB'):
       rgb_model = i3d.InceptionI3d(
           NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
       rgb_logits, _ = rgb_model(
@@ -81,7 +81,7 @@ def main(unused_argv):
 
 
     rgb_variable_map = {}
-    for variable in tf.global_variables():
+    for variable in tf.compat.v1.global_variables():
 
       if variable.name.split('/')[0] == 'RGB':
         if eval_type == 'rgb600':
@@ -89,23 +89,23 @@ def main(unused_argv):
         else:
           rgb_variable_map[variable.name.replace(':0', '')] = variable
 
-    rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
+    rgb_saver = tf.compat.v1.train.Saver(var_list=rgb_variable_map, reshape=True)
 
   if eval_type in ['flow', 'joint']:
     # Flow input has only 2 channels.
-    flow_input = tf.placeholder(
+    flow_input = tf.compat.v1.placeholder(
         tf.float32,
         shape=(1, _SAMPLE_VIDEO_FRAMES, _IMAGE_SIZE, _IMAGE_SIZE, 2))
-    with tf.variable_scope('Flow'):
+    with tf.compat.v1.variable_scope('Flow'):
       flow_model = i3d.InceptionI3d(
           NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
       flow_logits, _ = flow_model(
           flow_input, is_training=False, dropout_keep_prob=1.0)
     flow_variable_map = {}
-    for variable in tf.global_variables():
+    for variable in tf.compat.v1.global_variables():
       if variable.name.split('/')[0] == 'Flow':
         flow_variable_map[variable.name.replace(':0', '')] = variable
-    flow_saver = tf.train.Saver(var_list=flow_variable_map, reshape=True)
+    flow_saver = tf.compat.v1.train.Saver(var_list=flow_variable_map, reshape=True)
 
   if eval_type == 'rgb' or eval_type == 'rgb600':
     model_logits = rgb_logits
@@ -115,16 +115,16 @@ def main(unused_argv):
     model_logits = rgb_logits + flow_logits
   model_predictions = tf.nn.softmax(model_logits)
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     feed_dict = {}
     if eval_type in ['rgb', 'rgb600', 'joint']:
       if imagenet_pretrained:
         rgb_saver.restore(sess, _CHECKPOINT_PATHS['rgb_imagenet'])
       else:
         rgb_saver.restore(sess, _CHECKPOINT_PATHS[eval_type])
-      tf.logging.info('RGB checkpoint restored')
+      tf.compat.v1.logging.info('RGB checkpoint restored')
       rgb_sample = np.load(_SAMPLE_PATHS['rgb'])
-      tf.logging.info('RGB data loaded, shape=%s', str(rgb_sample.shape))
+      tf.compat.v1.logging.info('RGB data loaded, shape=%s', str(rgb_sample.shape))
       feed_dict[rgb_input] = rgb_sample
 
     if eval_type in ['flow', 'joint']:
@@ -132,9 +132,9 @@ def main(unused_argv):
         flow_saver.restore(sess, _CHECKPOINT_PATHS['flow_imagenet'])
       else:
         flow_saver.restore(sess, _CHECKPOINT_PATHS['flow'])
-      tf.logging.info('Flow checkpoint restored')
+      tf.compat.v1.logging.info('Flow checkpoint restored')
       flow_sample = np.load(_SAMPLE_PATHS['flow'])
-      tf.logging.info('Flow data loaded, shape=%s', str(flow_sample.shape))
+      tf.compat.v1.logging.info('Flow data loaded, shape=%s', str(flow_sample.shape))
       feed_dict[flow_input] = flow_sample
 
     out_logits, out_predictions = sess.run(
@@ -152,4 +152,4 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  tf.app.run(main)
+  tf.compat.v1.app.run(main)
